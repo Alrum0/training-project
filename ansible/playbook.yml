@@ -64,5 +64,35 @@
       ansible.builtin.pip:
         requirements: "{{ app_dir }}/requirements.txt"
         virtualenv: "{{ app_dir }}/venv"
-        virtualenv_python: python3
+        virtualenv_command: /usr/bin/python3 -m venv
       become_user: "{{ app_user }}"
+
+    - name: Copy systemd unit file
+      ansible.builtin.copy:
+        src: training-app.service
+        dest: /etc/systemd/system/training-app.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart training-app
+
+    - name: Enable training-app service
+      ansible.builtin.systemd:
+        name: training-app
+        enabled: true
+
+    - name: Ensure training-app service is running
+      ansible.builtin.systemd:
+        name: training-app
+        state: started
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart training-app
+      ansible.builtin.systemd:
+        name: training-app
+        state: restarted
