@@ -117,6 +117,57 @@
       args:
         chdir: "{{ app_dir }}"
 
+    - name: Copy monitoring script
+      ansible.builtin.copy:
+        src: ../monitor.sh
+        dest: "{{ app_dir }}/monitor.sh"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0755"
+
+    - name: Ensure monitor log exists
+      ansible.builtin.file:
+        path: "{{ app_dir }}/monitor.log"
+        state: touch
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Copy monitor.service unit
+      ansible.builtin.copy:
+        src: ../monitor.service
+        dest: /etc/systemd/system/monitor.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+
+    - name: Copy monitor.timer unit
+      ansible.builtin.copy:
+        src: ../monitor.timer
+        dest: /etc/systemd/system/monitor.timer
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart monitor timer
+
+    - name: Copy logrotate config for monitor
+      ansible.builtin.copy:
+        src: ../monitor-logrotate
+        dest: /etc/logrotate.d/monitor
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable and start monitor timer
+      ansible.builtin.systemd:
+        name: monitor.timer
+        enabled: true
+        state: started
+
   handlers:
     - name: Reload systemd
       ansible.builtin.systemd:
@@ -125,4 +176,9 @@
     - name: Restart training-app
       ansible.builtin.systemd:
         name: training-app
+        state: restarted
+
+    - name: Restart monitor timer
+      ansible.builtin.systemd:
+        name: monitor.timer
         state: restarted
